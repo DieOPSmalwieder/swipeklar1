@@ -1,0 +1,51 @@
+name: SwipeKlar iPhone bauen
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Dateien laden
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Quellcode entpacken
+        run: |
+          set -euo pipefail
+          python3 -m zipfile -e SwipeKlar-Quellcode.zip .
+          test -f SwipeKlar/SwipeKlar.xcodeproj/project.pbxproj
+
+      - name: Auswahllogik testen
+        working-directory: SwipeKlar
+        run: swift test
+
+      - name: iPhone-App bauen und verpacken
+        working-directory: SwipeKlar
+        run: bash scripts/build_ipa.sh
+
+      - name: Installationsdatei bereitstellen
+        uses: actions/upload-artifact@v7
+        with:
+          name: SwipeKlar-iPhone
+          path: SwipeKlar/dist/SwipeKlar.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Buildprotokoll bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: SwipeKlar-Buildprotokoll
+          path: SwipeKlar/dist/build.log
+          if-no-files-found: ignore
+          retention-days: 14
